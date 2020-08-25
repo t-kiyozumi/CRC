@@ -1,7 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <iostream>
+#include <time.h>
+// #define MESSAGE 0b111111010011101100 //送りたい情報のマクロ
+// #define GP      0b010000100000010011 //生成多項式のマクロ
+// #define GPD 17 //生成多項式の最高次数
+
 #define MESSAGE 0b00000000000000000011010011101100 //送りたい情報のマクロ
-#define GP 0b00000000000000000000000000001011      //生成多項式のマクロ
+#define GP      0b00000000000000000000000000001011     //生成多項式のマクロ
+#define GPD 4 //生成多項式の最高次数
 
 //devided(情報)をdivisor(生成多項式)で割ってあまりのremを返す関数
 //Ngは生成多項式の最高次数
@@ -32,8 +40,26 @@ uint32_t calc_rem(uint32_t divided, uint32_t divisor, uint32_t Ng)
     }
 }
 
+//数値を二進数で表示するためのプログラム
+std::string to_binString(unsigned int val)
+{
+    if (!val)
+        return std::string("0");
+    std::string str;
+    while (val != 0)
+    {
+        if ((val & 1) == 0)               // val は偶数か？
+            str.insert(str.begin(), '0'); //  偶数の場合
+        else
+            str.insert(str.begin(), '1'); //  奇数の場合
+        val >>= 1;
+    }
+    return str;
+}
+
 int main()
 {
+    srand((unsigned int)time(NULL));
     uint32_t Ms;     //送りたい情報
     uint32_t crc;    //パリティ，crc符号
     uint32_t g;      //生成多項式
@@ -42,27 +68,55 @@ int main()
     uint32_t CDmask; //繰り下げを行うためのマスク
     CDmask = 0b10000000000000000000000000000000;
     uint32_t checkP;
+    uint32_t noise = 0b0; //情報を誤らせるための雑音
 
     //--------------------------------以下送信部----------------------
-
     //送りたい情報を決定
     Ms = MESSAGE;
     //生成多項式を決定
     g = GP;
-    Ng = 4;
+    Ng = GPD;
     //割り算のために調節する
     Ms = Ms << (Ng - 1); //余りを後からくっつける分だけ下位ビットを開ける
     //割り算の余りをcrcとする。
-
     crc = calc_rem(Ms, g, Ng); //Msをgで割った余りを計算
-    printf("%u\n", crc);
-    frame = crc | Ms; //送信用フレーム
+    frame = crc | Ms;          //送信用フレームの作成
+
+    //送信する情報に関することを表示
+    printf("\n----------infromation of send-----------------\n");
+    printf("sendMesage:%s\n", to_binString(MESSAGE).c_str());
+    printf("GP:%s\n", to_binString(GP).c_str());
+    printf("CRC:%s\n", to_binString(crc).c_str());
+    printf("sendFrame:%s\n", to_binString(frame).c_str());
+
     //----------------------------------以下伝送路--------------------
+    printf("\n----------infromation of channel-----------------\n");
+    //50％の確率でノイズを混ぜる
+    noise = rand() % 2;
+    if (noise != 0b0)
+    {
+        frame = noise | frame;
+        printf("Noise has occurred\n");
+    }
+    else
+    {
+        printf("NO noise\n");
+    }
 
     //----------------------------------以下受信部--------------------
     //受け取ったフレームが破損していないかしらべる
+    printf("\n----------infromation of receive-----------------\n");
     checkP = calc_rem(frame, g, Ng);
-    printf("%u\n", checkP);
+    if (checkP > 0)
+    {
+        printf("The comm has failed\n");
+        printf("received frame:%s\n", to_binString(frame).c_str());
 
+    }
+    else
+    {
+        printf("The comm was a successe!!\n");
+        printf("received frame:%s\n", to_binString(frame).c_str());
+    }
     return 0;
 }
