@@ -3,24 +3,22 @@
 #include <stdlib.h>
 #include <iostream>
 #include <time.h>
-// #define MESSAGE 0b111111010011101100 //送りたい情報のマクロ
-// #define GP      0b010000100000010011 //生成多項式のマクロ
-// #define GPD 17 //生成多項式の最高次数
+#define MESSAGE 0b1111111111100000000 //送りたい情報のマクロ
+#define GP      0b10000100000010011        //生成多項式のマクロ
+#define GPD 17                          //生成多項式の最上位bit数
 
-#define MESSAGE 0b00000000000000000011010011101100 //送りたい情報のマクロ
-#define GP      0b00000000000000000000000000001011     //生成多項式のマクロ
-#define GPD 4 //生成多項式の最高次数
+// #define GPD 4 //生成多項式の最上位bit数
 
 //devided(情報)をdivisor(生成多項式)で割ってあまりのremを返す関数
 //Ngは生成多項式の最高次数
-uint32_t calc_rem(uint32_t divided, uint32_t divisor, uint32_t Ng)
+uint64_t calc_rem(uint64_t divided, uint64_t divisor, uint64_t Ng)
 {
 
-    int rem;
+    uint64_t rem;
     rem = divided;
-    int CDmask = 0b10000000000000000000000000000000;
+    uint64_t CDmask = 0b1000000000000000000000000000000000000000000000000000000000000000;
 
-    divisor = divisor << (32 - Ng);
+    divisor = divisor << (64 - Ng);
     while (1)
     {
         if (rem & CDmask) //先頭のビットが1であるならばxorの処理を行う
@@ -41,7 +39,7 @@ uint32_t calc_rem(uint32_t divided, uint32_t divisor, uint32_t Ng)
 }
 
 //数値を二進数で表示するためのプログラム
-std::string to_binString(unsigned int val)
+std::string to_binString(uint64_t val)
 {
     if (!val)
         return std::string("0");
@@ -60,15 +58,16 @@ std::string to_binString(unsigned int val)
 int main()
 {
     srand((unsigned int)time(NULL));
-    uint32_t Ms;     //送りたい情報
-    uint32_t crc;    //パリティ，crc符号
-    uint32_t g;      //生成多項式
+    uint64_t Ms;     //送りたい情報
+    uint64_t crc;    //パリティ，crc符号
+    uint64_t g;      //生成多項式
     int Ng;          //生成多項式の最高次数
-    uint32_t frame;  //実際に送信するパリティ付の情報，フレーム
-    uint32_t CDmask; //繰り下げを行うためのマスク
-    CDmask = 0b10000000000000000000000000000000;
-    uint32_t checkP;
-    uint32_t noise = 0b0; //情報を誤らせるための雑音
+    uint64_t frame;  //実際に送信するパリティ付の情報，フレーム
+    uint64_t CDmask; //繰り下げを行うためのマスク
+    CDmask = 0b1000000000000000000000000000000000000000000000000000000000000000;
+    uint64_t checkP;
+
+    uint64_t noise = 0b0; //情報を誤らせるための雑音
 
     //--------------------------------以下送信部----------------------
     //送りたい情報を決定
@@ -83,7 +82,7 @@ int main()
     frame = crc | Ms;          //送信用フレームの作成
 
     //送信する情報に関することを表示
-    printf("\n----------infromation of send-----------------\n");
+    printf("\n----------infromation of send--------------------\n");
     printf("sendMesage:%s\n", to_binString(MESSAGE).c_str());
     printf("GP:%s\n", to_binString(GP).c_str());
     printf("CRC:%s\n", to_binString(crc).c_str());
@@ -95,7 +94,8 @@ int main()
     noise = rand() % 2;
     if (noise != 0b0)
     {
-        frame = noise | frame;
+        //ノイズを受信したので信号を破損させる
+        frame = frame>>5;
         printf("Noise has occurred\n");
     }
     else
@@ -110,13 +110,12 @@ int main()
     if (checkP > 0)
     {
         printf("The comm has failed\n");
-        printf("received frame:%s\n", to_binString(frame).c_str());
-
+        printf("receiveFrame:%s\n", to_binString(frame).c_str());
     }
     else
     {
         printf("The comm was a successe!!\n");
-        printf("received frame:%s\n", to_binString(frame).c_str());
+        printf("receiveFrame:%s\n", to_binString(frame).c_str());
     }
     return 0;
 }
